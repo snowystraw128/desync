@@ -1,0 +1,178 @@
+-- [[ DESYNC BY SNOWYY - OPTIMIZED V9 ]] --
+
+-- 1. SET GLOBALS
+getgenv().DesyncToggle = false
+getgenv().UnwalkToggle = true
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local ghostModel = nil
+
+-- 2. UNWALK ANIMATION STOPPER
+RunService.Stepped:Connect(function()
+    if getgenv().UnwalkToggle and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            for _, track in pairs(hum:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
+        end
+    end
+end)
+
+-- 3. UI SETUP
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "Desync_By_Snowyy"
+ScreenGui.ResetOnSpawn = false
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 200, 0, 180) 
+Main.Position = UDim2.new(0.5, -100, 0.5, -90)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 0
+Main.Active = true 
+Instance.new("UICorner", Main)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "Desync by Snowyy"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+
+local StatusLabel = Instance.new("TextLabel", Main)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0, 0, 0, 30)
+StatusLabel.Text = "Status: Normal"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 10
+
+local PingLabel = Instance.new("TextLabel", Main)
+PingLabel.Size = UDim2.new(1, 0, 0, 20)
+PingLabel.Position = UDim2.new(0, 0, 0, 42)
+PingLabel.Text = "Ping: 0 ms"
+PingLabel.TextColor3 = Color3.fromRGB(130, 130, 130)
+PingLabel.BackgroundTransparency = 1
+PingLabel.Font = Enum.Font.Code
+PingLabel.TextSize = 10
+
+-- Real-time Ping Update
+task.spawn(function()
+    while task.wait(1) do
+        local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+        PingLabel.Text = "Ping: " .. ping .. " ms"
+    end
+end)
+
+-- Ghost Logic
+local function manageGhost(state)
+    if state then
+        local char = LocalPlayer.Character
+        if char then
+            char.Archivable = true
+            ghostModel = char:Clone()
+            char.Archivable = false
+            for _, v in pairs(ghostModel:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Anchored = true
+                    v.CanCollide = false
+                    v.Transparency = 0.5
+                elseif v:IsA("LocalScript") or v:IsA("Script") then
+                    v:Destroy()
+                end
+            end
+            local head = ghostModel:FindFirstChild("Head")
+            if head then
+                local bb = Instance.new("BillboardGui", head)
+                bb.Size = UDim2.new(0, 120, 0, 40)
+                bb.AlwaysOnTop = true
+                bb.ExtentsOffset = Vector3.new(0, 3, 0)
+                local tl = Instance.new("TextLabel", bb)
+                tl.Size = UDim2.new(1, 0, 1, 0)
+                tl.Text = "SERVER POS"
+                tl.TextColor3 = Color3.new(1, 0, 0)
+                tl.BackgroundTransparency = 1
+                tl.Font = Enum.Font.GothamBold
+                tl.TextSize = 14
+            end
+            ghostModel.Parent = workspace
+        end
+    else
+        if ghostModel then ghostModel:Destroy() ghostModel = nil end
+    end
+end
+
+-- 4. BUTTONS & EVENT-BASED EXECUTION
+local DesyncBtn = Instance.new("TextButton", Main)
+DesyncBtn.Size = UDim2.new(0, 170, 0, 35)
+DesyncBtn.Position = UDim2.new(0.5, -85, 0.45, 0)
+DesyncBtn.Text = "DESYNC: OFF"
+DesyncBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+DesyncBtn.TextColor3 = Color3.new(1, 1, 1)
+DesyncBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", DesyncBtn)
+
+DesyncBtn.MouseButton1Click:Connect(function()
+    getgenv().DesyncToggle = not getgenv().DesyncToggle
+    
+    -- Single-shot execution
+    if getgenv().DesyncToggle then
+        pcall(function() raknet.desync(true) end)
+        DesyncBtn.Text = "DESYNC: ON"
+        DesyncBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        StatusLabel.Text = "Status: DESYNCED"
+        StatusLabel.TextColor3 = Color3.new(1, 0, 0)
+    else
+        pcall(function() raknet.desync(false) end)
+        DesyncBtn.Text = "DESYNC: OFF"
+        DesyncBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        StatusLabel.Text = "Status: Normal"
+        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    
+    manageGhost(getgenv().DesyncToggle)
+end)
+
+local UnwalkBtn = Instance.new("TextButton", Main)
+UnwalkBtn.Size = UDim2.new(0, 170, 0, 35)
+UnwalkBtn.Position = UDim2.new(0.5, -85, 0.72, 0)
+UnwalkBtn.Text = "UNWALK: ON"
+UnwalkBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+UnwalkBtn.TextColor3 = Color3.new(1, 1, 1)
+UnwalkBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", UnwalkBtn)
+
+UnwalkBtn.MouseButton1Click:Connect(function()
+    getgenv().UnwalkToggle = not getgenv().UnwalkToggle
+    UnwalkBtn.Text = "UNWALK: " .. (getgenv().UnwalkToggle and "ON" or "OFF")
+    UnwalkBtn.BackgroundColor3 = getgenv().UnwalkToggle and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(45, 45, 45)
+end)
+
+-- 5. UNIVERSAL DRAGGABLE LOGIC
+local dragToggle, dragStart, startPos
+
+Main.InputBegan:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        dragToggle = true
+        dragStart = input.Position
+        startPos = Main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragToggle = false end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
+        local delta = input.Position - dragStart
+        local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        TweenService:Create(Main, TweenInfo.new(0.12, Enum.EasingStyle.Sine), {Position = position}):Play()
+    end
+end)
